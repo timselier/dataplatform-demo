@@ -1,0 +1,54 @@
+apiVersion: "clickhouse.altinity.com/v1"
+kind: "ClickHouseInstallation"
+metadata:
+  name: "clickhouse-{{ include "dataplatform-chart.fullname" . }}"
+  labels:
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+spec:
+  configuration:
+    users:
+      {{ .Values.clickhouse.username }}/networks/ip: "::/0"
+      {{ .Values.clickhouse.username }}/password: {{ .Values.clickhouse.password }}
+      {{ .Values.clickhouse.username }}/profile: default
+    zookeeper:
+      nodes:
+        - host: {{ include "dataplatform-chart.fullname" . }}-clickhouse-zookeeper.default.svc.cluster.local
+    clusters:
+      - name: "cluster"
+        templates:
+          podTemplate: clickhouse-pod-template
+          dataVolumeClaimTemplate: data-volumeclaim-template
+          clusterServiceTemplate: service-template
+        layout:
+          shardsCount: {{ .Values.data.shardsCount }}
+          replicasCount: {{ .Values.clickhouse.replication }}
+
+  templates:
+    podTemplates:
+      - name: clickhouse-pod-template
+        podDistribution:
+          - type: ShardAntiAffinity
+          - type: ReplicaAntiAffinity
+
+    volumeClaimTemplates:
+      - name: data-volumeclaim-template
+        reclaimPolicy: Retain
+        spec:
+          storageClassName: standard
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ $.Values.clickhouse.storage }}
+    serviceTemplates:
+      - name: service-template
+        spec:
+          ports:
+            - name: http
+              port: 8123
+            - name: tcp
+              port: 9000
+            - name: interserver
+              port: 9009
+          type: ClusterIP
+          clusterIP: None

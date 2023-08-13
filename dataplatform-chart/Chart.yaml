@@ -1,0 +1,12 @@
+apiVersion: v2
+name: dataplatform
+description: Demo of Dataplatform with Kafka and ClickHouse
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+dependencies:
+- name: zookeeper
+  alias: clickhouse-zookeeper
+  version: 11.4.2
+  repository: oci://registry-1.docker.io/bitnamicharts

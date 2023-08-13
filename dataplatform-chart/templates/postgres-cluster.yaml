@@ -1,0 +1,18 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}
+  labels:
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+spec:
+  instances: {{ $.Values.postgresql.replication }}
+  primaryUpdateStrategy: unsupervised
+  postgresql:
+    parameters:
+      "pgaudit.log": "all, -misc"
+      "pgaudit.log_catalog": "off"
+      "pgaudit.log_parameter": "on"
+      "pgaudit.log_relation": "on"
+  storage:
+    storageClass: {{ $.Values.storageClass.fast }}
+    size: {{ $.Values.postgresql.storage }}

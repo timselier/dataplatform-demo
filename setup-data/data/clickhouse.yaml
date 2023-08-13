@@ -1,0 +1,65 @@
+tables:
+- name: weatherStationObservation
+  id_column:
+    name: station_id
+    type: Int64
+  ts_column:
+    name: measurement_moment
+    type: Datetime64(6)
+    codec:
+    - ZSTD
+  columns:
+  - name: temperature_ambient
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: temperature_ground
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: humidity
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: pressure
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: wind_speed
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: precipitation
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  - name: irradiance
+    type: Float64
+    codec:
+    - Delta
+    - ZSTD
+  kafka_topic: weather-station-observation
+analytical_tables:
+- table: weatherStationObservation
+  aggregator:
+    type: last
+- table: weatherStationObservation
+  aggregator:
+    type: interval
+    name: day
+    group_functions:
+    - toDate
+    - toStartOfDay
+    aggregations:
+    - type: avg
+    - type: quantiles
+      args_agg:
+      - '0.1'
+      - '0.5'
+      - '0.9'

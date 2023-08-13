@@ -1,0 +1,50 @@
+{{- if $.Values.dataSetup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "data-setup-{{ include "dataplatform-chart.fullname" . }}"
+  labels:
+    app.kubernetes.io/component: data-setup
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: data-setup
+        {{- include "dataplatform-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: data-setup
+          image: "{{ $.Values.dataSetup.image }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BOOTSTRAP_HOST
+              value: kafka-cluster-{{ include "dataplatform-chart.fullname" . }}-kafka-bootstrap.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: CLICKHOUSE_HOST
+              value: clickhouse-clickhouse-{{ include "dataplatform-chart.fullname" . }}.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: CLICKHOUSE_USERNAME
+              value: "{{ $.Values.clickhouse.username }}"
+            - name: CLICKHOUSE_PASSWORD
+              value: "{{ $.Values.clickhouse.password }}"
+            - name: POSTGRES_HOST_R
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-r.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_HOST_RW
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-rw.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_HOST_RO
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-ro.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef: 
+                  name: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-app
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: 
+                  name: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-app
+                  key: password
+        
+{{- end }}

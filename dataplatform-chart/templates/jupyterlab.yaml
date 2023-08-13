@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "jupyterlab-{{ include "dataplatform-chart.fullname" . }}"
+  labels:
+    app.kubernetes.io/component: jupyterlab
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jupyterlab
+      {{- include "dataplatform-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: jupyterlab
+        {{- include "dataplatform-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      containers:
+        - name: jupyterlab
+          image: "{{ $.Values.jupyter.image }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 8888
+          command:
+            - /bin/bash
+            - -c
+            - | 
+              init.sh && start.sh jupyter lab --LabApp.token='{{ $.Values.jupyter.password }}' --LabApp.ip='0.0.0.0' --LabApp.allow_root=True
+          volumeMounts:
+            - name: jupyterlab-data-{{ include "dataplatform-chart.fullname" . }}
+              mountPath: /home/jovyan
+          env:
+            - name: KAFKA_BOOTSTRAP_HOST
+              value: kafka-cluster-{{ include "dataplatform-chart.fullname" . }}-kafka-bootstrap.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: CLICKHOUSE_HOST
+              value: clickhouse-clickhouse-{{ include "dataplatform-chart.fullname" . }}.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: CLICKHOUSE_USERNAME
+              value: "{{ $.Values.clickhouse.username }}"
+            - name: CLICKHOUSE_PASSWORD
+              value: "{{ $.Values.clickhouse.password }}"
+            - name: POSTGRES_HOST_R
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-r.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_HOST_RW
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-rw.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_HOST_RO
+              value: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-ro.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef: 
+                  name: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-app
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: 
+                  name: postgres-cluster-{{ include "dataplatform-chart.fullname" . }}-app
+                  key: password
+          resources:
+            requests:
+              memory: 500Mi
+              cpu: 250m
+      restartPolicy: Always
+      volumes:
+      - name: jupyterlab-data-{{ include "dataplatform-chart.fullname" . }}
+        persistentVolumeClaim:
+          claimName: jupyterlab-pvc-{{ include "dataplatform-chart.fullname" . }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyterlab-pvc-{{ include "dataplatform-chart.fullname" . }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyterlab-{{ include "dataplatform-chart.fullname" . }}
+  labels:
+    app.kubernetes.io/component: jupyterlab
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8888
+      targetPort: 8888
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/component: jupyterlab
+    {{- include "dataplatform-chart.selectorLabels" . | nindent 4 }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyterlab-{{ include "dataplatform-chart.fullname" . }}
+  labels:
+    {{- include "dataplatform-chart.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"    
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: jupyterlab-{{ include "dataplatform-chart.fullname" . }}
+            port: 
+              number: 8888
+

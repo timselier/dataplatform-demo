@@ -1,0 +1,12 @@
+{{- range $.Values.data.topics }}
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: {{ . }}
+  labels:
+    strimzi.io/cluster: "kafka-cluster-{{ include "dataplatform-chart.fullname" $ }}"
+    {{- include "dataplatform-chart.labels" $ | nindent 4 }}
+spec:
+  partitions: {{ mul $.Values.data.shardsCount $.Values.kafka.topicsPerShard }}
+  replicas: {{ $.Values.kafka.replication }}
+{{- end }}

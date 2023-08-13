@@ -1,0 +1,42 @@
+data:
+  shardsCount: 3
+  topics:
+   - weather-station-observation
+
+clickhouse:
+  replication: 2
+  storage: 10Gi
+  username: user
+  password: qwerty
+
+kafka:
+  topicsPerShard: 1
+  replication: 2
+  storage: 10Gi
+  zookeeper:
+    replication: 3
+    storage: 10Gi
+
+postgresql:
+  replication: 3
+  storage: 10Gi
+
+jupyter:
+  password: welcome123
+  image: jupyter/datascience-notebook:latest
+
+dataGenerator:
+  enabled: true
+  image: data-generator:latest
+  stationMaxId: "100"
+  stationTopic: weather-station-observation
+  stationInterval: "1.0"
+
+dataSetup:
+  enabled: true
+  image: setup-data:latest
+
+storageClass:
+  fast: standard # ssd
+  normal: standard # hdd
+
